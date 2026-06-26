@@ -28,6 +28,7 @@ app.get("/", (req, res) => {
     res.send(`
     <html>
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>QR Catalog System</title>
         <style>
             body {
@@ -249,7 +250,7 @@ app.post("/create", upload.array("images", 10), async (req, res) => {
 
     // 5. Generate QR link
     const url = `${req.protocol}://${req.get('host')}/product/${id}`;
-    
+
     const qr = await QRCode.toDataURL(url);
 
     // 6. Show QR
@@ -274,6 +275,7 @@ app.get("/product/:id", (req, res) => {
     res.send(`
         <html>
         <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>${product.name}</title>
             <style>
                 body {
@@ -358,5 +360,71 @@ app.listen(PORT, () => {
 });
 
 app.get("/", (req, res) => {
-    res.send("QR System Running");
+    res.send(`
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>QR Catalog System</title>
+
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #f5f5f5;
+                display: flex;
+                justify-content: center;
+                padding-top: 50px;
+                margin: 0;
+            }
+
+            .card {
+                background: white;
+                padding: 25px;
+                border-radius: 12px;
+                width: 90%;
+                max-width: 400px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            }
+
+            input {
+                width: 100%;
+                padding: 10px;
+                margin-top: 8px;
+                margin-bottom: 12px;
+                box-sizing: border-box;
+                font-size: 16px;
+            }
+
+            button {
+                width: 100%;
+                padding: 12px;
+                cursor: pointer;
+                font-size: 16px;
+                background: black;
+                color: white;
+                border: none;
+                border-radius: 8px;
+            }
+
+            button:hover {
+                opacity: 0.9;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="card">
+            <h1>Create Product</h1>
+
+            <form method="POST" action="/create" enctype="multipart/form-data">
+                <input name="name" placeholder="Product Name" required />
+                <input name="description" placeholder="Description" required />
+
+                <input type="file" name="images" multiple required />
+
+                <button type="submit">Create + Generate QR</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    `);
 });
