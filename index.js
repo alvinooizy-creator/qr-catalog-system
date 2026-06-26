@@ -248,8 +248,8 @@ app.post("/create", upload.array("images", 10), async (req, res) => {
     fs.writeFileSync("products.json", JSON.stringify(products, null, 2));
 
     // 5. Generate QR link
-    const url = `http://localhost:3000/product/${id}`;
-
+    const url = `${req.protocol}://${req.get('host')}/product/${id}`;
+    
     const qr = await QRCode.toDataURL(url);
 
     // 6. Show QR
