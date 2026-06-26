@@ -1,6 +1,7 @@
 const express = require("express");
 const QRCode = require("qrcode");
-
+const fs = require("fs");
+const sharp = require("sharp");
 const app = express();
 
 app.use(express.urlencoded({ extended: true }));
@@ -81,7 +82,6 @@ app.get("/", (req, res) => {
 });
 
 app.get("/admin", (req, res) => {
-    const fs = require("fs");
     const products = JSON.parse(fs.readFileSync("products.json"));
 
     let html = `
@@ -164,12 +164,14 @@ app.get("/admin", (req, res) => {
             }
 
             .image-slider img {
-                width: 200px;
-                height: 200px;
+                width: 100vw;
+                height: 100vh;
                 object-fit: cover;
-                border-radius: 10px;
                 flex-shrink: 0;
-                scroll-snap-align: center;
+                 scroll-snap-align: center;
+
+                transform: translateZ(0);
+                will-change: transform;
             }
             </style>
     </head>
@@ -221,19 +223,30 @@ app.get("/delete/:id", (req, res) => {
 });
 
 // create product + QR
-const fs = require("fs"); // (ONLY if you don't already have this at the top)
-
 app.post("/create", upload.array("images", 10), async (req, res) => {
+    const fs = require("fs");
+
     const name = req.body.name;
     const description = req.body.description;
 
-    const images = req.files.map(file => `/uploads/${file.filename}`);
-
-    // 1. Read existing products
     const products = JSON.parse(fs.readFileSync("products.json"));
 
-    // 2. Create new product
     const id = Date.now();
+
+    let images = [];
+
+    // compress images safely
+    for (let file of req.files) {
+
+        const outputPath = "uploads/optimized-" + file.filename;
+
+        await sharp(file.path)
+            .resize(1000)
+            .jpeg({ quality: 70 })
+            .toFile(outputPath);
+
+        images.push("/" + outputPath);
+    }
 
     const newProduct = {
         id,
@@ -242,24 +255,20 @@ app.post("/create", upload.array("images", 10), async (req, res) => {
         images
     };
 
-    // 3. Add to list
     products.push(newProduct);
 
-    // 4. Save back to file
     fs.writeFileSync("products.json", JSON.stringify(products, null, 2));
 
-    // 5. Generate QR link
     const url = `${req.protocol}://${req.get('host')}/product/${id}`;
-
     const qr = await QRCode.toDataURL(url);
 
-    // 6. Show QR
     res.send(`
         <h2>Product Saved!</h2>
         <p>${name}</p>
         <img src="${qr}" />
         <br><br>
         <a href="/">Create Another</a>
+        <a href="/admin">Admin</a>
     `);
 });
 
@@ -277,76 +286,37 @@ app.get("/product/:id", (req, res) => {
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>${product.name}</title>
+
             <style>
                 body {
-                    font-family: Arial;
-                    background: #f5f5f5;
-                    text-align: center;
-                    padding: 30px;
-                }
-                .card {
-                    background: white;
-                    padding: 20px;
-                    border-radius: 12px;
-                    width: 300px;
-                    margin: auto;
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                }
-                img {
-                    width: 100%;
-                    border-radius: 10px;
-                }
-                h1 {
-                    font-size: 22px;
-                }
-                p {
-                    color: #555;
-                }
-                .price {
-                    color: green;
-                    font-size: 18px;
-                    margin-top: 10px;
-                }
-                .btn {
-                    display: inline-block;
-                    margin-top: 15px;
-                    padding: 10px 15px;
+                    margin: 0;
                     background: black;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 8px;
                 }
+
                 .image-slider {
                     display: flex;
                     overflow-x: auto;
-                    gap: 10px;
                     scroll-snap-type: x mandatory;
-                    margin-bottom: 15px;
+                    height: 100vh;
+                    width: 100vw;
                 }
 
                 .image-slider img {
-                    width: 100%;
-                    max-width: 300px;
-                    height: 300px;
+                    width: 100vw;
+                    height: 100vh;
                     object-fit: cover;
-                    border-radius: 10px;
                     flex-shrink: 0;
                     scroll-snap-align: center;
                 }
             </style>
         </head>
+
         <body>
-
-            <div class="card">
-                <div class="image-slider">
-                    ${product.images.map(img => `<img src="${img}" />`).join("")}
-                </div>
-                <h1>${product.name}</h1>
-                <p>${product.description}</p>
-                <div class="price">Available Now</div>
-                <a class="btn" href="/">Back</a>
+            <div class="image-slider">
+                 ${product.images.map(img =>
+                     `<img src="${img}" loading="lazy" decoding="async" />`
+               ).join("")}
             </div>
-
         </body>
         </html>
     `);
