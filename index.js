@@ -24,63 +24,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// homepage (create product + generate QR)
-app.get("/", (req, res) => {
-    res.send(`
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>QR Catalog System</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                background: #f5f5f5;
-                display: flex;
-                justify-content: center;
-                padding-top: 50px;
-            }
-
-            .card {
-                background: white;
-                padding: 25px;
-                border-radius: 12px;
-                width: 350px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            }
-
-            input {
-                width: 100%;
-                padding: 10px;
-                margin-top: 8px;
-                margin-bottom: 12px;
-                box-sizing: border-box;
-            }
-
-            button {
-                width: 100%;
-                padding: 12px;
-                cursor: pointer;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>Create Product</h1>
-
-            <form method="POST" action="/create" enctype="multipart/form-data">
-                <input name="name" placeholder="Product Name" required />
-                <input name="description" placeholder="Description" required />
-
-                <input type="file" name="images" multiple required />
-
-                <button type="submit">Create + Generate QR</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    `);
-});
-
 app.get("/admin", (req, res) => {
     const products = JSON.parse(fs.readFileSync("products.json"));
 
@@ -265,10 +208,51 @@ app.post("/create", upload.array("images", 10), async (req, res) => {
     res.send(`
         <h2>Product Saved!</h2>
         <p>${name}</p>
-        <img src="${qr}" />
+
+        <div class="qr-container">
+            <img src="${qr}" class="qr" />
+        </div>
+
+        <a href="${qr}" download="qr-${id}.png" class="btn">Download QR</a>
+
         <br><br>
         <a href="/">Create Another</a>
         <a href="/admin">Admin</a>
+
+        <style>
+            body {
+                margin: 0;
+                font-family: Arial;
+                background: #111;
+                color: white;
+                text-align: center;
+            }
+
+            .qr-container {
+                height: 75vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .qr {
+                width: 85vw;
+                max-width: 350px;
+                background: white;
+                padding: 15px;
+                border-radius: 12px;
+            }
+
+            .btn {
+                display: inline-block;
+                margin-top: 10px;
+                padding: 12px 18px;
+                background: #00ffcc;
+                color: black;
+                text-decoration: none;
+                border-radius: 8px;
+            }
+        </style>
     `);
 });
 
@@ -282,43 +266,51 @@ app.get("/product/:id", (req, res) => {
     if (!product) return res.send("Product not found");
 
     res.send(`
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${product.name}</title>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${product.name}</title>
 
-            <style>
-                body {
-                    margin: 0;
-                    background: black;
-                }
+        <style>
+            html, body {
+                margin: 0;
+                padding: 0;
+                background: black;
+                overflow: hidden;
+            }
 
-                .image-slider {
-                    display: flex;
-                    overflow-x: auto;
-                    scroll-snap-type: x mandatory;
-                    height: 100vh;
-                    width: 100vw;
-                }
+            .slider {
+                display: flex;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                height: 100vh;
+                width: 100vw;
+                -webkit-overflow-scrolling: touch;
+            }
 
-                .image-slider img {
-                    width: 100vw;
-                    height: 100vh;
-                    object-fit: cover;
-                    flex-shrink: 0;
-                    scroll-snap-align: center;
-                }
-            </style>
-        </head>
+            .slider img {
+                width: 100vw;
+                height: 100vh;
+                object-fit: cover;
+                scroll-snap-align: center;
+                flex-shrink: 0;
+            }
 
-        <body>
-            <div class="image-slider">
-                 ${product.images.map(img =>
-                     `<img src="${img}" loading="lazy" decoding="async" />`
-               ).join("")}
-            </div>
-        </body>
-        </html>
+            /* hide scrollbar */
+            .slider::-webkit-scrollbar {
+                display: none;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="slider">
+            ${product.images.map(img => `
+                <img src="${img}" loading="lazy" decoding="async" />
+            `).join("")}
+        </div>
+    </body>
+    </html>
     `);
 });
 
