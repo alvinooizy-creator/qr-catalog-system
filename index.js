@@ -264,6 +264,10 @@ app.get("/product/:id", (req, res) => {
     const product = products.find(p => p.id == req.params.id);
 
     if (!product) return res.send("Product not found");
+    
+    if (!product || !product.images) {
+        return res.send("Product data corrupted or missing images");
+    }
 
     res.send(`
 <html>
@@ -305,32 +309,25 @@ app.get("/product/:id", (req, res) => {
         }
 
         .img {
-            width: auto;
-            height: auto;
-            max-width: none;
-            max-height: none;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
             touch-action: none;
+            user-select: none;
+        }
+
+        .img-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #container::-webkit-scrollbar {
             display: none;
         }
 
-        .btn {
-            position: absolute;
-            right: 15px;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            border: none;
-            font-size: 22px;
-            z-index: 10;
-            background: white;
-            cursor: pointer;
-        }
-
-        .plus { top: 20px; }
-        .minus { top: 80px; }
     </style>
 </head>
 
@@ -339,9 +336,11 @@ app.get("/product/:id", (req, res) => {
 <div class="viewer">
 
     <div id="container">
-        ${product.images.map(img => `
+        ${(product.images || []).map(img => `
             <div class="page">
-                <img class="img" src="${img}" />
+                <div class="img-wrapper">
+                    <img class="img" src="${img}" />
+                </div>
             </div>
         `).join("")}
     </div>
@@ -350,48 +349,91 @@ app.get("/product/:id", (req, res) => {
 
 <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom/dist/panzoom.min.js"></script>
 
-<script>
-const pages = document.querySelectorAll(".page");
+    <script>
+    const pages = document.querySelectorAll(".page");
+    const container = document.getElementById("container");
 
-pages.forEach((page) => {
+    let zoomStates = new Map();
+    let lockSwipe = false;
+    let isTouching = false;
 
-    const img = page.querySelector(".img");
+    pages.forEach((page, index) => {
 
-    const panzoom = Panzoom(img, {
-        maxScale: 5,
-        minScale: 1,
-        contain: "outside",
-        animate: true
-    });
+        zoomStates.set(index, false);
 
-    page.style.touchAction = "none";
+        const img = page.querySelector(".img");
 
-    page.addEventListener("wheel", panzoom.zoomWithWheel);
+        const panzoom = Panzoom(img, {
+            maxScale: 5,
+            minScale: 1,
+            contain: "outside",
+            animate: true,
+            pinchAndPan: true
+        });
 
-    let lastTap = 0;
+        img.style.touchAction = "none";
 
-    page.addEventListener("touchend", (e) => {
-        const now = Date.now();
-        const diff = now - lastTap;
+        page.addEventListener("wheel", panzoom.zoomWithWheel);
 
-        if (diff < 300 && diff > 0) {
+        // 🔒 TRACK ZOOM STATE
+        img.addEventListener("panzoomchange", () => {
             const scale = panzoom.getScale();
 
-            if (scale > 1) {
-                panzoom.reset();
-            } else {
-                panzoom.zoomToPoint(2, {
-                    clientX: e.changedTouches[0].clientX,
-                    clientY: e.changedTouches[0].clientY
-                });
-            }
-        }
+            zoomStates.set(index, scale > 1);
 
-        lastTap = now;
+            lockSwipe = Array.from(zoomStates.values()).some(v => v);
+        });
+
+        // 🔒 STOP SWIPE WHEN ZOOMED
+        page.addEventListener("touchmove", (e) => {
+            if (lockSwipe) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 🔥 DOUBLE TAP ZOOM
+        let lastTap = 0;
+
+        page.addEventListener("touchend", (e) => {
+            const now = Date.now();
+
+            if (now - lastTap < 300) {
+
+                const isZoomed = panzoom.getScale() > 1;
+
+                if (isZoomed) {
+                    panzoom.reset();
+                    zoomStates.set(index, false);
+                } else {
+                    panzoom.zoomToPoint(2, {
+                        clientX: e.changedTouches[0].clientX,
+                        clientY: e.changedTouches[0].clientY
+                    });
+                    zoomStates.set(index, true);
+                }
+            }
+
+            lastTap = now;
+        });
+
     });
 
-});
-</script>
+
+    // 🧠 OUTSIDE LOOP (GLOBAL SWIPE LOCK)
+
+    container.addEventListener("touchmove", (e) => {
+        if (lockSwipe) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    container.addEventListener("touchstart", (e) => {
+        if (lockSwipe) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    </script>
 
 </body>
 </html>
