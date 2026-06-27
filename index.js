@@ -258,13 +258,6 @@ app.post("/create", upload.array("images", 10), async (req, res) => {
 
 // product page
 app.get("/product/:id", (req, res) => {
-    const fs = require("fs");
-    const products = JSON.parse(fs.readFileSync("products.json"));
-
-    const product = products.find(p => p.id == req.params.id);
-
-    if (!product) return res.send("Product not found");
-
     res.send(`
     <html>
     <head>
@@ -277,40 +270,134 @@ app.get("/product/:id", (req, res) => {
                 padding: 0;
                 background: black;
                 overflow: hidden;
+                height: 100%;
             }
 
-            .slider {
+            .viewer {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            #container {
                 display: flex;
+                width: 100vw;
+                height: 100vh;
                 overflow-x: auto;
                 scroll-snap-type: x mandatory;
-                height: 100vh;
-                width: 100vw;
                 -webkit-overflow-scrolling: touch;
             }
 
-            .slider img {
-                width: 100vw;
+            .page {
+                min-width: 100vw;
                 height: 100vh;
-                object-fit: cover;
+                display: flex;
+                justify-content: center;
+                align-items: center;
                 scroll-snap-align: center;
-                flex-shrink: 0;
             }
 
-            /* hide scrollbar */
-            .slider::-webkit-scrollbar {
+            .img {
+                width: auto;
+                height: auto;
+                max-width: none;
+                max-height: none;
+                touch-action: none;
+            }
+
+            #container::-webkit-scrollbar {
                 display: none;
             }
+
+            .btn {
+                position: absolute;
+                right: 15px;
+                width: 45px;
+                height: 45px;
+                border-radius: 50%;
+                border: none;
+                font-size: 22px;
+                z-index: 10;
+                background: white;
+                cursor: pointer;
+            }
+
+            .plus { top: 20px; }
+            .minus { top: 80px; }
         </style>
     </head>
 
     <body>
-        <div class="slider">
+
+    <div class="viewer">
+
+        <button class="btn plus">+</button>
+        <button class="btn minus">−</button>
+
+        <div id="container">
             ${product.images.map(img => `
-                <img src="${img}" loading="lazy" decoding="async" />
+                <div class="page">
+                    <img class="img" src="${img}" />
+                </div>
             `).join("")}
         </div>
-    </body>
-    </html>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom/dist/panzoom.min.js"></script>
+
+    <script>
+    const pages = document.querySelectorAll(".page");
+
+    pages.forEach((page) => {
+
+        const img = page.querySelector(".img");
+
+        const panzoom = Panzoom(img, {
+            maxScale: 5,
+            minScale: 1,
+            contain: "outside",
+            animate: true
+        });
+
+        page.style.touchAction = "none";
+
+        page.addEventListener("wheel", panzoom.zoomWithWheel);
+
+        let lastTap = 0;
+
+        page.addEventListener("touchend", (e) => {
+            const now = Date.now();
+            const diff = now - lastTap;
+
+            if (diff < 300 && diff > 0) {
+                const scale = panzoom.getScale();
+
+                if (scale > 1) {
+                    panzoom.reset();
+                } else {
+                    panzoom.zoomToPoint(2, {
+                        clientX: e.changedTouches[0].clientX,
+                        clientY: e.changedTouches[0].clientY
+                    });
+                }
+            }
+        }
+
+        lastTap = now;
+    });
+
+});
+
+document.querySelector(".plus").onclick = () => {
+    document.querySelectorAll(".img").forEach(img => {
+        img.dispatchEvent(new WheelEvent("wheel"));
+    });
+};
+</script>
+
+</body>
+</html>
     `);
 });
 
