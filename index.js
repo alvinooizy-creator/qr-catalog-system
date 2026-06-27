@@ -309,9 +309,10 @@ app.get("/product/:id", (req, res) => {
         }
 
         .img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            width: auto;
+            height: auto;
+            max-width: none;
+            max-height: none;
             touch-action: none;
             user-select: none;
         }
@@ -322,6 +323,7 @@ app.get("/product/:id", (req, res) => {
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: visible;
         }
 
         #container::-webkit-scrollbar {
@@ -365,10 +367,9 @@ app.get("/product/:id", (req, res) => {
 
         const panzoom = Panzoom(img, {
             maxScale: 5,
-            minScale: 1,
+            minScale: 0.5,
             contain: "outside",
-            animate: true,
-            pinchAndPan: true
+            startScale: 1
         });
 
         img.style.touchAction = "none";
