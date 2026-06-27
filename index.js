@@ -25,7 +25,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 app.get("/admin", (req, res) => {
-    const products = JSON.parse(fs.readFileSync("products.json"));
+    const products = JSON.parse(
+        fs.existsSync("products.json")
+            ? fs.readFileSync("products.json", "utf-8")
+            : "[]"
+    );
 
     let html = `
     <html>
@@ -132,7 +136,7 @@ app.get("/admin", (req, res) => {
         html += `
         <div class="card">
             <div class="image-slider">
-                ${p.images.map(img => `<img src="${img}" />`).join("")}
+                ${(p.images || []).map(img => `<img src="${img}" />`).join("")}
             </div>
             <h3>${p.name}</h3>
             <p>${p.description}</p>
@@ -309,21 +313,21 @@ app.get("/product/:id", (req, res) => {
         }
 
         .img {
-            width: auto;
-            height: auto;
-            max-width: none;
-            max-height: none;
-            touch-action: none;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+
             user-select: none;
+            touch-action: none;
+
+            transform-origin: center;
         }
 
         .img-wrapper {
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: visible;
+            position: relative;
+            overflow: hidden;
         }
 
         #container::-webkit-scrollbar {
@@ -357,7 +361,24 @@ app.get("/product/:id", (req, res) => {
 
     let zoomStates = new Map();
     let lockSwipe = false;
+    let viewMode = "fit"; // fit | width | free
     let isTouching = false;
+
+    function applyFit(panzoom, img) {
+        if (!img.naturalWidth || !img.naturalHeight) return;
+
+        const scaleX = container.offsetWidth / img.naturalWidth;
+        const scaleY = container.offsetHeight / img.naturalHeight;
+
+        const scale = Math.min(scaleX, scaleY);
+
+        requestAnimationFrame(() => {
+            panzoom.reset();
+            requestAnimationFrame(() => {
+                panzoom.zoom(scale);
+            });
+        });
+    }
 
     pages.forEach((page, index) => {
 
@@ -366,11 +387,19 @@ app.get("/product/:id", (req, res) => {
         const img = page.querySelector(".img");
 
         const panzoom = Panzoom(img, {
-            maxScale: 5,
-            minScale: 0.5,
+            maxScale: 8,
+            minScale: 1,
             contain: "outside",
-            startScale: 1
+            step: 0.2
         });
+
+        if (img.complete) {
+            applyFit(panzoom, img);
+        } else {
+            img.addEventListener("load", () => {
+                applyFit(panzoom, img);
+            });
+        }
 
         img.style.touchAction = "none";
 
@@ -380,7 +409,7 @@ app.get("/product/:id", (req, res) => {
         img.addEventListener("panzoomchange", () => {
             const scale = panzoom.getScale();
 
-            zoomStates.set(index, scale > 1);
+            zoomStates.set(index, scale > 1.05);
 
             lockSwipe = Array.from(zoomStates.values()).some(v => v);
         });
@@ -422,22 +451,24 @@ app.get("/product/:id", (req, res) => {
 
     // 🧠 OUTSIDE LOOP (GLOBAL SWIPE LOCK)
 
-    container.addEventListener("touchmove", (e) => {
-        if (lockSwipe) {
-            e.preventDefault();
-        }
-    }, { passive: false });
+    let startX = 0;
 
     container.addEventListener("touchstart", (e) => {
-        if (lockSwipe) {
+        startX = e.touches[0].clientX;
+    }, { passive: false });
+
+    container.addEventListener("touchmove", (e) => {
+        const moveX = Math.abs(e.touches[0].clientX - startX);
+
+        if (lockSwipe && moveX > 20) {
             e.preventDefault();
         }
     }, { passive: false });
 
     </script>
 
-</body>
-</html>
+    </body>
+    </html>
     `);
 });
 
