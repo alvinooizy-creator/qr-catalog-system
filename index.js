@@ -258,129 +258,132 @@ app.post("/create", upload.array("images", 10), async (req, res) => {
 
 // product page
 app.get("/product/:id", (req, res) => {
+    const fs = require("fs");
+    const products = JSON.parse(fs.readFileSync("products.json"));
+
+    const product = products.find(p => p.id == req.params.id);
+
+    if (!product) return res.send("Product not found");
+
     res.send(`
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${product.name}</title>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${product.name}</title>
 
-        <style>
-            html, body {
-                margin: 0;
-                padding: 0;
-                background: black;
-                overflow: hidden;
-                height: 100%;
-            }
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: black;
+            overflow: hidden;
+            height: 100%;
+        }
 
-            .viewer {
-                width: 100vw;
-                height: 100vh;
-                overflow: hidden;
-            }
+        .viewer {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-            #container {
-                display: flex;
-                width: 100vw;
-                height: 100vh;
-                overflow-x: auto;
-                scroll-snap-type: x mandatory;
-                -webkit-overflow-scrolling: touch;
-            }
+        #container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
 
-            .page {
-                min-width: 100vw;
-                height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                scroll-snap-align: center;
-            }
+        .page {
+            min-width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            scroll-snap-align: center;
+        }
 
-            .img {
-                width: auto;
-                height: auto;
-                max-width: none;
-                max-height: none;
-                touch-action: none;
-            }
+        .img {
+            width: auto;
+            height: auto;
+            max-width: none;
+            max-height: none;
+            touch-action: none;
+        }
 
-            #container::-webkit-scrollbar {
-                display: none;
-            }
+        #container::-webkit-scrollbar {
+            display: none;
+        }
 
-            .btn {
-                position: absolute;
-                right: 15px;
-                width: 45px;
-                height: 45px;
-                border-radius: 50%;
-                border: none;
-                font-size: 22px;
-                z-index: 10;
-                background: white;
-                cursor: pointer;
-            }
+        .btn {
+            position: absolute;
+            right: 15px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: none;
+            font-size: 22px;
+            z-index: 10;
+            background: white;
+            cursor: pointer;
+        }
 
-            .plus { top: 20px; }
-            .minus { top: 80px; }
-        </style>
-    </head>
+        .plus { top: 20px; }
+        .minus { top: 80px; }
+    </style>
+</head>
 
-    <body>
+<body>
 
-    <div class="viewer">
+<div class="viewer">
 
-        <button class="btn plus">+</button>
-        <button class="btn minus">−</button>
-
-        <div id="container">
-            ${product.images.map(img => `
-                <div class="page">
-                    <img class="img" src="${img}" />
-                </div>
-            `).join("")}
-        </div>
-
+    <div id="container">
+        ${product.images.map(img => `
+            <div class="page">
+                <img class="img" src="${img}" />
+            </div>
+        `).join("")}
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom/dist/panzoom.min.js"></script>
+</div>
 
-    <script>
-    const pages = document.querySelectorAll(".page");
+<script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom/dist/panzoom.min.js"></script>
 
-    pages.forEach((page) => {
+<script>
+const pages = document.querySelectorAll(".page");
 
-        const img = page.querySelector(".img");
+pages.forEach((page) => {
 
-        const panzoom = Panzoom(img, {
-            maxScale: 5,
-            minScale: 1,
-            contain: "outside",
-            animate: true
-        });
+    const img = page.querySelector(".img");
 
-        page.style.touchAction = "none";
+    const panzoom = Panzoom(img, {
+        maxScale: 5,
+        minScale: 1,
+        contain: "outside",
+        animate: true
+    });
 
-        page.addEventListener("wheel", panzoom.zoomWithWheel);
+    page.style.touchAction = "none";
 
-        let lastTap = 0;
+    page.addEventListener("wheel", panzoom.zoomWithWheel);
 
-        page.addEventListener("touchend", (e) => {
-            const now = Date.now();
-            const diff = now - lastTap;
+    let lastTap = 0;
 
-            if (diff < 300 && diff > 0) {
-                const scale = panzoom.getScale();
+    page.addEventListener("touchend", (e) => {
+        const now = Date.now();
+        const diff = now - lastTap;
 
-                if (scale > 1) {
-                    panzoom.reset();
-                } else {
-                    panzoom.zoomToPoint(2, {
-                        clientX: e.changedTouches[0].clientX,
-                        clientY: e.changedTouches[0].clientY
-                    });
-                }
+        if (diff < 300 && diff > 0) {
+            const scale = panzoom.getScale();
+
+            if (scale > 1) {
+                panzoom.reset();
+            } else {
+                panzoom.zoomToPoint(2, {
+                    clientX: e.changedTouches[0].clientX,
+                    clientY: e.changedTouches[0].clientY
+                });
             }
         }
 
@@ -388,12 +391,6 @@ app.get("/product/:id", (req, res) => {
     });
 
 });
-
-document.querySelector(".plus").onclick = () => {
-    document.querySelectorAll(".img").forEach(img => {
-        img.dispatchEvent(new WheelEvent("wheel"));
-    });
-};
 </script>
 
 </body>
