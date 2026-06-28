@@ -360,12 +360,6 @@ app.get("/product/:id", (req, res) => {
     const container = document.getElementById("container");
 
     let zoomStates = new Map();
-
-    // DEBUG
-    container.addEventListener("scroll", () => {
-        console.log("Container scrolling");
-    });
-
     let lockSwipe = false;
     let viewMode = "fit"; // fit | width | free
     let isTouching = false;
@@ -379,9 +373,9 @@ app.get("/product/:id", (req, res) => {
         const scale = Math.min(scaleX, scaleY);
 
         requestAnimationFrame(() => {
-            instance.reset();
+            panzoom.reset();
             requestAnimationFrame(() => {
-                instance.zoom(scale);
+                panzoom.zoom(scale);
             });
         });
     }
@@ -392,16 +386,12 @@ app.get("/product/:id", (req, res) => {
 
         const img = page.querySelector(".img");
 
-        const PanzoomLib = window.Panzoom || Panzoom;
-
-        const instance = PanzoomLib(img, {
-            maxScale: 5,
+        const panzoom = Panzoom(img, {
+            maxScale: 8,
             minScale: 1,
             contain: "outside",
-            animate: true
+            step: 0.2
         });
-
-        console.log("Panzoom created for page", index);
 
         if (img.complete) {
             applyFit(panzoom, img);
@@ -411,23 +401,18 @@ app.get("/product/:id", (req, res) => {
             });
         }
 
-        img.style.touchAction = "pan-x pan-y";
+        img.style.touchAction = "none";
 
-        page.addEventListener("wheel", instance.zoomWithWheel);
+        page.addEventListener("wheel", panzoom.zoomWithWheel);
 
         // 🔒 TRACK ZOOM STATE
-        function updateZoomState() {
-            const scale = instance.getScale();
-            const isZoomed = scale > 1.05;
+        img.addEventListener("panzoomchange", () => {
+            const scale = panzoom.getScale();
 
-            zoomStates.set(index, isZoomed);
-            lockSwipe = Array.from(zoomStates.values()).some(Boolean);
-        }
+            zoomStates.set(index, scale > 1.05);
 
-        page.addEventListener("touchend", () => requestAnimationFrame(updateZoomState));
-        page.addEventListener("wheel", () => requestAnimationFrame(updateZoomState));
-        instance.on("pan", updateZoomState);
-        instance.on("zoom", updateZoomState);
+            lockSwipe = Array.from(zoomStates.values()).some(v => v);
+        });
 
         // 🔒 STOP SWIPE WHEN ZOOMED
         page.addEventListener("touchmove", (e) => {
@@ -444,13 +429,13 @@ app.get("/product/:id", (req, res) => {
 
             if (now - lastTap < 300) {
 
-                const isZoomed = instance.getScale() > 1;
+                const isZoomed = panzoom.getScale() > 1;
 
                 if (isZoomed) {
-                    instance.reset();
+                    panzoom.reset();
                     zoomStates.set(index, false);
                 } else {
-                    instance.zoomToPoint(2, {
+                    panzoom.zoomToPoint(2, {
                         clientX: e.changedTouches[0].clientX,
                         clientY: e.changedTouches[0].clientY
                     });
