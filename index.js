@@ -374,7 +374,7 @@
             });
         }
 
-        pages.forEach((page, index) => {
+        pages.forEach((page) => {
 
             const img = page.querySelector(".img");
 
@@ -385,6 +385,8 @@
                 step: 0.2
             });
 
+            img.style.touchAction = "none";
+
             if (img.complete) {
                 applyFit(panzoom, img);
             } else {
@@ -393,30 +395,30 @@
                 });
             }
 
-            img.style.touchAction = "none";
+            // 🔥 DOUBLE TAP ZOOM
+            let lastTap = 0;
 
-        let lastTap = 0;
+            page.addEventListener("touchend", (e) => {
+                const now = Date.now();
 
-        page.addEventListener("touchend", (e) => {
-            const now = Date.now();
+                if (now - lastTap < 300) {
 
-            if (now - lastTap < 300) {
+                    const isZoomed = panzoom.getScale() > 1;
 
-                const isZoomed = panzoom.getScale() > 1;
-
-                if (isZoomed) {
-                    panzoom.reset();
-                } else {
-                    panzoom.zoomToPoint(2, {
-                        clientX: e.changedTouches[0].clientX,
-                        clientY: e.changedTouches[0].clientY
-                    });
+                    if (isZoomed) {
+                        panzoom.reset();
+                    } else {
+                        panzoom.zoomToPoint(2, {
+                            clientX: e.changedTouches[0].clientX,
+                            clientY: e.changedTouches[0].clientY
+                        });
+                    }
                 }
-            }
 
-            lastTap = now;
+                lastTap = now;
+            });
+
         });
-
         </script>
 
         </body>
