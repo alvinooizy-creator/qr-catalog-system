@@ -368,7 +368,7 @@
             const scaleX = container.offsetWidth / img.naturalWidth;
             const scaleY = container.offsetHeight / img.naturalHeight;
 
-            const scale = Math.min(scaleX, scaleY);
+            const scale = Math.min(scaleX, scaleY, 1);
 
             requestAnimationFrame(() => {
                 panzoom.reset();
@@ -404,10 +404,9 @@
         page.addEventListener("wheel", panzoom.zoomWithWheel);
 
             img.addEventListener("panzoomchange", () => {
-                const scale = panzoom.getScale();
-
-                zoomStates.set(index, scale > 1.05);
-
+                const currentScale = panzoom.getScale();
+                zoomStates.set(index, currentScale > panzoom.getOptions().minScale + 0.05);
+                
                 lockSwipe = Array.from(zoomStates.values()).some(v => v);
             });
 
