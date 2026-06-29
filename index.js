@@ -317,10 +317,8 @@
                 width: 100%;
                 height: 100%;
                 object-fit: contain;
-
                 user-select: none;
                 touch-action: none;
-
                 transform-origin: center;
             }
 
@@ -378,8 +376,6 @@
 
         pages.forEach((page, index) => {
 
-            zoomStates.set(index, false);
-
             const img = page.querySelector(".img");
 
             const panzoom = Panzoom(img, {
@@ -388,8 +384,6 @@
                 contain: "outside",
                 step: 0.2
             });
-
-            img.addEventListener("wheel", (e) => panzoom.zoomWithWheel(e));
 
             if (img.complete) {
                 applyFit(panzoom, img);
@@ -401,36 +395,27 @@
 
             img.style.touchAction = "none";
 
-        page.addEventListener("touchmove", (e) => {
+        let lastTap = 0;
 
-            let lastTap = 0;
+        page.addEventListener("touchend", (e) => {
+            const now = Date.now();
 
-            page.addEventListener("touchend", (e) => {
-                const now = Date.now();
+            if (now - lastTap < 300) {
 
-                if (now - lastTap < 300) {
+                const isZoomed = panzoom.getScale() > 1;
 
-                    const isZoomed = panzoom.getScale() > 1;
-
-                    if (isZoomed) {
-                        panzoom.reset();
-                        zoomStates.set(index, false);
-                    } else {
-                        panzoom.zoomToPoint(2, {
-                            clientX: e.changedTouches[0].clientX,
-                            clientY: e.changedTouches[0].clientY
-                        });
-                        zoomStates.set(index, true);
-                    }
+                if (isZoomed) {
+                    panzoom.reset();
+                } else {
+                    panzoom.zoomToPoint(2, {
+                        clientX: e.changedTouches[0].clientX,
+                        clientY: e.changedTouches[0].clientY
+                    });
                 }
+            }
 
-                lastTap = now;
-            });
-
+            lastTap = now;
         });
-
-        let startX = 0;
-        let startY = 0;
 
         </script>
 
