@@ -319,7 +319,7 @@
                 object-fit: contain;
 
                 user-select: none;
-                touch-action: pan-x pan-y;
+                touch-action: none;
 
                 transform-origin: center;
             }
@@ -388,6 +388,8 @@
                 contain: "outside",
                 step: 0.2
             });
+
+            img.parentElement.addEventListener("wheel", panzoom.zoomWithWheel);
 
             if (img.complete) {
                 applyFit(panzoom, img);
