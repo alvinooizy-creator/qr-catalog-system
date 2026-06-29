@@ -319,7 +319,7 @@
 
     /* hide scrollbar */
     #container::-webkit-scrollbar {
-        isplay: none;
+        display: none;
     }
     </style>
     </head>
@@ -359,11 +359,19 @@
         const img = page.querySelector(".img");
 
         const panzoom = Panzoom(img, {
-            maxScale: 5,
+            maxScale: 4,
             minScale: 1,
             contain: "outside",
-            step: 0.2
-     });
+            step: 0.2,
+            canvas: true
+        });
+    
+        let isZoomed = false;
+
+        img.addEventListener("panzoomchange", () => {
+            isZoomed = panzoom.getScale() > 1.05;
+            container.style.overflowX = isZoomed ? "hidden" : "auto";
+        });
 
         // 🔥 IMPORTANT: allow swipe unless zoomed
         let isZoomed = false;
@@ -378,10 +386,17 @@
         // 🔥 FIX: wheel zoom (desktop)
         img.parentElement.addEventListener("wheel", panzoom.zoomWithWheel);
 
-        img.style.touchAction = "none";
+        img.style.touchAction = "pan-x pan-y";
 
-        if (img.complete) applyFit(panzoom, img);
-        else img.onload = () => applyFit(panzoom, img);
+             // 👇 IMAGE FIT LOGIC
+            if (img.complete) {
+                applyFit(panzoom, img);
+            } else {
+                img.addEventListener("load", () => {
+                    applyFit(panzoom, img);
+                });
+            }
+        });
 
         // 🔥 double tap zoom
         let lastTap = 0;
