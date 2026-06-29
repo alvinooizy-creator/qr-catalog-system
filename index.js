@@ -360,9 +360,6 @@
         const pages = document.querySelectorAll(".page");
         const container = document.getElementById("container");
 
-        let zoomStates = new Map();
-        let lockSwipe = false;
-
         function applyFit(panzoom, img) {
             if (!img.naturalWidth || !img.naturalHeight) return;
 
@@ -386,7 +383,7 @@
             const img = page.querySelector(".img");
 
             const panzoom = Panzoom(img, {
-                maxScale: 8,
+                maxScale: 4,
                 minScale: 1,
                 contain: "outside",
                 step: 0.2
@@ -402,22 +399,7 @@
 
             img.style.touchAction = "none";
 
-            img.addEventListener("panzoomchange", () => {
-                const currentScale = panzoom.getScale();
-                zoomStates.set(index, currentScale > panzoom.getOptions().minScale + 0.05);
-
-                lockSwipe = Array.from(zoomStates.values()).some(v => v);
-            });
-
         page.addEventListener("touchmove", (e) => {
-
-            if (!lockSwipe) return;
-
-            if (e.touches.length === 2) return;
-
-            e.preventDefault();
-
-        }, { passive: false });
 
             let lastTap = 0;
 
