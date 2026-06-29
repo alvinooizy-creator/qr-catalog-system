@@ -365,40 +365,35 @@
             step: 0.2,
             canvas: true
         });
-    
-        let isZoomed = false;
 
-        img.addEventListener("panzoomchange", () => {
-            isZoomed = panzoom.getScale() > 1.05;
-            container.style.overflowX = isZoomed ? "hidden" : "auto";
-        });
-
-        // 🔥 IMPORTANT: allow swipe unless zoomed
-        let isZoomed = false;
-
-        img.addEventListener("panzoomchange", () => {
-            isZoomed = panzoom.getScale() > 1.05;
-
-            // disable swipe ONLY when zoomed
-            container.style.overflowX = isZoomed ? "hidden" : "auto";
-        });
-
-        // 🔥 FIX: wheel zoom (desktop)
+        // ✅ FIX: desktop zoom
         img.parentElement.addEventListener("wheel", panzoom.zoomWithWheel);
 
-        img.style.touchAction = "pan-x pan-y";
+        // ✅ FIX: proper touch behavior
+        img.style.touchAction = "none";
 
-             // 👇 IMAGE FIT LOGIC
-            if (img.complete) {
-                applyFit(panzoom, img);
+        // ✅ IMAGE FIT
+        if (img.complete) {
+            applyFit(panzoom, img);
+        } else {
+            img.addEventListener("load", () => applyFit(panzoom, img));
+        }
+
+        // ✅ STATE (per page, NOT global)
+        let isZoomed = false;
+
+        // ✅ lock/unlock swipe properly
+        panzoom.on("zoom", () => {
+            isZoomed = panzoom.getScale() > 1.05;
+
+            if (isZoomed) {
+                container.style.overflowX = "hidden";
             } else {
-                img.addEventListener("load", () => {
-                    applyFit(panzoom, img);
-                });
+                container.style.overflowX = "auto";
             }
         });
 
-        // 🔥 double tap zoom
+        // ✅ double tap zoom (INSIDE loop - FIXED)
         let lastTap = 0;
 
         page.addEventListener("touchend", (e) => {
@@ -406,7 +401,7 @@
 
             if (now - lastTap < 300) {
 
-                if (isZoomed) {
+                if (panzoom.getScale() > 1) {
                     panzoom.reset();
                 } else {
                     panzoom.zoomToPoint(2, {
@@ -420,7 +415,6 @@
         });
 
     });
-
     </script>
 
     </body>
