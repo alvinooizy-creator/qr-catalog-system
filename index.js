@@ -301,6 +301,7 @@
                 overflow-x: auto;
                 scroll-snap-type: x mandatory;
                 -webkit-overflow-scrolling: touch;
+                touch-action: pan-x;
             }
 
             .page {
@@ -318,7 +319,7 @@
                 object-fit: contain;
 
                 user-select: none;
-                touch-action: none;
+                touch-action: pan-x pan-y;
 
                 transform-origin: center;
             }
@@ -401,12 +402,10 @@
 
             img.style.touchAction = "none";
 
-        page.addEventListener("wheel", panzoom.zoomWithWheel);
-
             img.addEventListener("panzoomchange", () => {
                 const currentScale = panzoom.getScale();
                 zoomStates.set(index, currentScale > panzoom.getOptions().minScale + 0.05);
-                
+
                 lockSwipe = Array.from(zoomStates.values()).some(v => v);
             });
 
@@ -448,25 +447,6 @@
 
         let startX = 0;
         let startY = 0;
-
-        container.addEventListener("touchstart", (e) => {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-        }, { passive: true });
-
-        container.addEventListener("touchmove", (e) => {
-
-            if (!lockSwipe) return;
-
-            const dx = Math.abs(e.touches[0].clientX - startX);
-            const dy = Math.abs(e.touches[0].clientY - startY);
-
-            // Only block swipe when zoomed AND the gesture is mostly horizontal
-            if (dx > dy && dx > 10) {
-                e.preventDefault();
-            }
-
-        }, { passive: false });
 
         </script>
 
