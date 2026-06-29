@@ -267,162 +267,149 @@
 
         const product = products.find(p => p.id == req.params.id);
 
-        if (!product) return res.send("Product not found");
-        
         if (!product || !product.images) {
-            return res.send("Product data corrupted or missing images");
+            return res.send("Product not found or corrupted");
         }
 
         res.send(`
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${product.name}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <style>
-            html, body {
-                margin: 0;
-                padding: 0;
-                background: black;
-                overflow: hidden;
-                height: 100%;
-            }
+    <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: black;
+        overflow: hidden;
+    }
 
-            .viewer {
-                width: 100vw;
-                height: 100vh;
-                overflow: hidden;
-            }
+    /* 📖 SWIPE CONTAINER */
+    #container {
+        display: flex;
+        width: 100vw;
+        height: 100vh;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+    }
 
-            #container {
-                display: flex;
-                width: 100vw;
-                height: 100vh;
-                overflow-x: auto;
-                scroll-snap-type: x mandatory;
-                -webkit-overflow-scrolling: touch;
-                touch-action: pan-x;
-            }
+    /* 📄 EACH PAGE */
+    .page {
+        min-width: 100vw;
+        height: 100vh;
+        scroll-snap-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
 
-            .page {
-                min-width: 100vw;
-                height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                scroll-snap-align: center;
-            }
+    /* 🖼 IMAGE */
+    .img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
 
-            .img {
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-                user-select: none;
-                touch-action: none;
-                transform-origin: center;
-            }
+        user-select: none;
 
-            .img-wrapper {
-                width: 100%;
-                height: 100%;
-                position: relative;
-                overflow: hidden;
-            }
+        /* IMPORTANT FIX */
+        touch-action: pan-x pan-y;
+    }
 
-            #container::-webkit-scrollbar {
-                display: none;
-            }
-
-        </style>
+    /* hide scrollbar */
+    #container::-webkit-scrollbar {
+        isplay: none;
+    }
+    </style>
     </head>
 
     <body>
 
-    <div class="viewer">
-
-        <div id="container">
-            ${(product.images || []).map(img => `
-                <div class="page">
-                    <div class="img-wrapper">
-                        <img class="img" src="${img}" />
-                    </div>
-                </div>
-            `).join("")}
-        </div>
-
+    <div id="container">
+        ${(product.images || []).map(img => `
+            <div class="page">
+                <img class="img" src="${img}" />
+            </div>
+        `).join("")}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom/dist/panzoom.min.js"></script>
 
-        <script>
-        const pages = document.querySelectorAll(".page");
-        const container = document.getElementById("container");
+    <script>
+    const pages = document.querySelectorAll(".page");
+    const container = document.getElementById("container");
 
-        function applyFit(panzoom, img) {
-            if (!img.naturalWidth || !img.naturalHeight) return;
+    function applyFit(panzoom, img) {
+        if (!img.naturalWidth) return;
 
-            const scaleX = container.offsetWidth / img.naturalWidth;
-            const scaleY = container.offsetHeight / img.naturalHeight;
+        const scaleX = container.offsetWidth / img.naturalWidth;
+        const scaleY = container.offsetHeight / img.naturalHeight;
 
-            const scale = Math.min(scaleX, scaleY, 1);
+        const scale = Math.min(scaleX, scaleY, 1);
 
-            requestAnimationFrame(() => {
-                panzoom.reset();
-                requestAnimationFrame(() => {
-                    panzoom.zoom(scale);
-                });
-            });
-        }
+        requestAnimationFrame(() => {
+            panzoom.reset();
+            panzoom.zoom(scale);
+        });
+    }
 
-        pages.forEach((page) => {
+    pages.forEach((page) => {
 
-            const img = page.querySelector(".img");
+        const img = page.querySelector(".img");
 
-            const panzoom = Panzoom(img, {
-                maxScale: 4,
-                minScale: 1,
-                contain: "outside",
-                step: 0.2
-            });
+        const panzoom = Panzoom(img, {
+            maxScale: 5,
+            minScale: 1,
+            contain: "outside",
+            step: 0.2
+     });
 
-            img.style.touchAction = "none";
+        // 🔥 IMPORTANT: allow swipe unless zoomed
+        let isZoomed = false;
 
-            if (img.complete) {
-                applyFit(panzoom, img);
-            } else {
-                img.addEventListener("load", () => {
-                    applyFit(panzoom, img);
-                });
+        img.addEventListener("panzoomchange", () => {
+            isZoomed = panzoom.getScale() > 1.05;
+
+            // disable swipe ONLY when zoomed
+            container.style.overflowX = isZoomed ? "hidden" : "auto";
+        });
+
+        // 🔥 FIX: wheel zoom (desktop)
+        img.parentElement.addEventListener("wheel", panzoom.zoomWithWheel);
+
+        img.style.touchAction = "none";
+
+        if (img.complete) applyFit(panzoom, img);
+        else img.onload = () => applyFit(panzoom, img);
+
+        // 🔥 double tap zoom
+        let lastTap = 0;
+
+        page.addEventListener("touchend", (e) => {
+            const now = Date.now();
+
+            if (now - lastTap < 300) {
+
+                if (isZoomed) {
+                    panzoom.reset();
+                } else {
+                    panzoom.zoomToPoint(2, {
+                        clientX: e.changedTouches[0].clientX,
+                        clientY: e.changedTouches[0].clientY
+                    });
+                }
             }
 
-            // 🔥 DOUBLE TAP ZOOM
-            let lastTap = 0;
-
-            page.addEventListener("touchend", (e) => {
-                const now = Date.now();
-
-                if (now - lastTap < 300) {
-
-                    const isZoomed = panzoom.getScale() > 1;
-
-                    if (isZoomed) {
-                        panzoom.reset();
-                    } else {
-                        panzoom.zoomToPoint(2, {
-                            clientX: e.changedTouches[0].clientX,
-                            clientY: e.changedTouches[0].clientY
-                        });
-                    }
-                }
-
-                lastTap = now;
-            });
-
+            lastTap = now;
         });
-        </script>
 
-        </body>
-        </html>
+    });
+
+    </script>
+
+    </body>
+    </html>
         `);
     });
 
