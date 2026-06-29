@@ -401,7 +401,7 @@
 
             img.style.touchAction = "none";
 
-            page.addEventListener("wheel", panzoom.zoomWithWheel);
+        page.addEventListener("wheel", panzoom.zoomWithWheel);
 
             img.addEventListener("panzoomchange", () => {
                 const scale = panzoom.getScale();
@@ -411,11 +411,15 @@
                 lockSwipe = Array.from(zoomStates.values()).some(v => v);
             });
 
-            page.addEventListener("touchmove", (e) => {
-                if (lockSwipe) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
+        page.addEventListener("touchmove", (e) => {
+
+            if (!lockSwipe) return;
+
+            if (e.touches.length === 2) return;
+
+            e.preventDefault();
+
+        }, { passive: false });
 
             let lastTap = 0;
 
@@ -444,17 +448,25 @@
         });
 
         let startX = 0;
+        let startY = 0;
 
         container.addEventListener("touchstart", (e) => {
             startX = e.touches[0].clientX;
-        }, { passive: false });
+            startY = e.touches[0].clientY;
+        }, { passive: true });
 
         container.addEventListener("touchmove", (e) => {
-            const moveX = Math.abs(e.touches[0].clientX - startX);
 
-            if (lockSwipe && moveX > 20) {
+            if (!lockSwipe) return;
+
+            const dx = Math.abs(e.touches[0].clientX - startX);
+            const dy = Math.abs(e.touches[0].clientY - startY);
+
+            // Only block swipe when zoomed AND the gesture is mostly horizontal
+            if (dx > dy && dx > 10) {
                 e.preventDefault();
             }
+
         }, { passive: false });
 
         </script>
