@@ -291,6 +291,7 @@
         width: 100vw;
         height: 100vh;
         overflow-x: auto;
+        overflow-y: hidden;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
     }
@@ -366,11 +367,9 @@
             canvas: true
         });
 
-        // ✅ FIX: desktop zoom
+        img.style.touchAction = "pan-x";
+        
         img.parentElement.addEventListener("wheel", panzoom.zoomWithWheel);
-
-        // ✅ FIX: proper touch behavior
-        img.style.touchAction = "none";
 
         // ✅ IMAGE FIT
         if (img.complete) {
