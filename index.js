@@ -389,7 +389,7 @@
                 step: 0.2
             });
 
-            img.parentElement.addEventListener("wheel", panzoom.zoomWithWheel);
+            img.addEventListener("wheel", (e) => panzoom.zoomWithWheel(e));
 
             if (img.complete) {
                 applyFit(panzoom, img);
